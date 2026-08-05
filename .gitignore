@@ -1,0 +1,13 @@
+.idea/
+*.iml
+.env
+**/target/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+UI
+.agents
+
+docs/temp
