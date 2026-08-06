@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
+import java.util.Base64;
 
 @Validated
 @ConfigurationProperties(prefix = "app.jwt")
@@ -26,5 +27,24 @@ public record JwtProperties(
                 (refreshTokenExpiration.isZero() || refreshTokenExpiration.isNegative())) {
             throw new IllegalArgumentException("Refresh-token expiration must be positive");
         }
+
+        byte[] key;
+        try {
+            key = Base64.getDecoder().decode(secret);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(
+                "JWT signing secret must be valid Base64", ex
+            );
+        }
+
+        if (key.length < 32) {
+            throw new IllegalArgumentException(
+                "JWT signing key must contain at least 32 bytes,"
+            );
+        }
+    }
+
+    public byte[] signingKey() {
+        return Base64.getDecoder().decode(secret);
     }
 }

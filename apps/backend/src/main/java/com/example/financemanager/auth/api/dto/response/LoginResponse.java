@@ -1,5 +1,8 @@
 package com.example.financemanager.auth.api.dto.response;
 
-public class LoginResponse {
-    // TODO: Add authentication response fields.
-}
+public record LoginResponse(
+    TokenResponse token,
+    UserResponse user
+) {
+
+} 

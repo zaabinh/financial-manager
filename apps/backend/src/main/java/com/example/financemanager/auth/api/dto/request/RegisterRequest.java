@@ -10,6 +10,7 @@ public record RegisterRequest (
     String email,
     @NotBlank(message = "Username must not be blank")
     String username,
+    
     @NotBlank(message = "Password must not be blank")
     @Size(min = 8, message = "Password must be longer than 8 characters")
     String password
