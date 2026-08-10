@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "FinTrackVN",
+    "slug": "fintrackvn",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.financemanager.app"
+    },
+    "android": {
+      "package": "com.financemanager.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF8FA"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": ["expo-secure-store"]
+  }
+}
