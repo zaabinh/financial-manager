@@ -1,9 +1,27 @@
 package com.example.financemanager.auth.api.dto.response;
 
 public record TokenResponse(
-    String accessToken,
-    String refreshToken,
-    String tokenType,
-    Long expiresIn
+        String accessToken,
+        String refreshToken,
+        String tokenType,
+        long accessTokenExpiresIn,
+        long refreshTokenExpiresIn,
+        UserResponse user
 ) {
+    public TokenResponse(
+            String accessToken,
+            String refreshToken,
+            long accessTokenExpiresIn,
+            long refreshTokenExpiresIn,
+            UserResponse user
+    ) {
+        this(
+                accessToken,
+                refreshToken,
+                "Bearer",
+                accessTokenExpiresIn,
+                refreshTokenExpiresIn,
+                user
+        );
+    }
 }

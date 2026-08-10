@@ -36,6 +36,7 @@ CREATE TABLE users (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     username        citext NOT NULL,
     email           citext,
+    email_verified  boolean NOT NULL DEFAULT false,
     password_hash   varchar(255) NOT NULL,
     display_name    varchar(150) NOT NULL,
     role            varchar(20) NOT NULL DEFAULT 'USER',
@@ -60,7 +61,9 @@ CREATE TABLE users (
         CHECK (
             (status = 'DELETED' AND deleted_at IS NOT NULL)
             OR status <> 'DELETED'
-        )
+        ),
+    CONSTRAINT uk_users_username UNIQUE(username),
+    CONSTRAINT uk_users_email UNIQUE(email)
 );
 
 CREATE UNIQUE INDEX uq_users_username_active

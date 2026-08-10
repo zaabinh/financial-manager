@@ -21,7 +21,7 @@ class FlywayMigrationTest extends PostgresIntegrationTest {
                 Integer.class
         );
 
-        assertThat(version).isEqualTo(10);
+        assertThat(version).isEqualTo(12);
     }
 
     @Test

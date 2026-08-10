@@ -58,6 +58,7 @@ Purpose: authentication identity, profile, status, and user-level preferences.
 | `id` | uuid | Yes | Generated | Primary key. |
 | `username` | citext | Yes | — | Trimmed, nonblank, unique among nondeleted users. |
 | `email` | citext | No | null | Valid email; unique among nondeleted users when present. |
+| `email_verified` | boolean | Yes | false | True only after successful confirmation; rollout migration grandfathers pre-verification users with email. |
 | `password_hash` | varchar(255) | Yes | — | BCrypt hash only. |
 | `display_name` | varchar(150) | Yes | — | Nonblank profile name. |
 | `role` | varchar(20) | Yes | `USER` | `USER` or `ADMIN`. |
@@ -257,6 +258,27 @@ Indexes:
 - Index on `token_family_id` for reuse response.
 - Index on `expires_at` for purge jobs.
 
+### 4.9 `email_verification_tokens`
+
+Purpose: single-use verification state for the user's current email address.
+
+| Column | Type | Required | Default | Constraints / Meaning |
+|---|---|---:|---|---|
+| `id` | uuid | Yes | Generated | Primary key. |
+| `user_id` | uuid | Yes | — | FK to user with cascade delete. |
+| `email` | citext | Yes | — | Email snapshot that must match the user's current email at confirmation. |
+| `token_hash` | char(64) | Yes | — | Unique lowercase SHA-256 hash; raw token is never stored. |
+| `expires_at` | timestamptz | Yes | — | 24 hours after issuance. |
+| `created_at` | timestamptz | Yes | Current timestamp | Issuance time. |
+| `used_at` | timestamptz | No | null | Successful confirmation time. |
+| `revoked_at` | timestamptz | No | null | Replacement or invalidation time. |
+
+Indexes:
+
+- Unique index on `token_hash`.
+- Partial index on `(user_id, expires_at)` where unused and unrevoked.
+- Index on `expires_at` for purge jobs.
+
 ## 5. Future-Reserved Subscription Tables
 
 Subscriptions are outside the MVP and have no public API or use case. The draft schema may retain these tables for future planning, but MVP services must not depend on them.
@@ -315,6 +337,7 @@ usage percentage = spent amount / limit amount × 100
 | Notifications | Physical deletion is acceptable. |
 | Notification settings | Cascade physical deletion with the user record only under an approved retention process. |
 | Refresh tokens | Revoke immediately; purge expired/revoked rows after the security retention window. |
+| Email verification tokens | Revoke on replacement/email change; cascade with user; purge expired, used, and revoked rows after the security retention window. |
 | Future subscriptions | Retain as auditable history under a future policy. |
 
 ## 8. Integrity Enforcement Matrix
@@ -330,6 +353,7 @@ usage percentage = spent amount / limit amount × 100
 | Duplicate monthly budget | Unique date-range index | Yes |
 | Read timestamp consistency | Check/trigger | Yes |
 | Refresh-token rotation/reuse | Structural constraints | Yes |
+| Email verification token safety | Hash/expiry/time/FK constraints | Yes, authoritative lifecycle and email match |
 | Dormant source/channel restrictions | Enum may be broader | Yes |
 | Cached-balance reconciliation | Trigger/view | Yes, monitoring and repair |
 
@@ -340,6 +364,7 @@ usage percentage = spent amount / limit amount × 100
 - Budget lookup: user, active status, and period; unique user/category/month.
 - Unread notifications: partial user/created index.
 - Active refresh tokens: partial user/expiration index and token-family index.
+- Active email verification tokens: partial user/expiration index and unique token hash.
 - User and category names: case-insensitive partial unique indexes excluding soft-deleted rows.
 - Query plans must be reviewed with production-like data before adding redundant indexes.
 
@@ -363,4 +388,4 @@ usage percentage = spent amount / limit amount × 100
 6. Roll forward with a corrective migration; do not depend on automatic down migrations.
 7. Validate migrations with Testcontainers PostgreSQL in CI.
 8. Validate every migration against the documented `SAVINGS` enum, monthly constraints, and cached-balance reconciliation rules.
-9. A database created manually from `db.sql` is adopted once at Flyway baseline version 9, then reconciled through `V10`; baseline-on-migrate is disabled afterward.
+9. A database created manually from `db.sql` is adopted once at Flyway baseline version 9, reconciled by `V10`, aligned with the current user schema by `V11`, and upgraded with verification tokens by `V12`; baseline-on-migrate is disabled afterward.

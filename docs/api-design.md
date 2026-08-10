@@ -169,13 +169,15 @@ Page response:
 
 ## 5. Authentication API
 
-Authentication endpoints are rate-limited. Register, login, and refresh are public; the others require a valid access token.
+Authentication endpoints are rate-limited. Register, login, refresh, and email-verification endpoints are public; logout and password operations require a valid access token.
 
 | Endpoint | Purpose / Auth | Request | Success | Validation and Errors |
 |---|---|---|---|---|
-| `POST /auth/register` | Create an active user. Public. | Body: `username`, optional `email`, `displayName`, `password`, optional `currency`, optional `timezone`. | `201` User; `Location: /api/v1/users/me`. | `422` invalid fields/password; `409` username or email conflict. |
-| `POST /auth/login` | Issue a token pair. Public. | Body: `username`, `password`, optional `deviceName`. | `200` token response. | `401` invalid credentials or inactive user; `429` rate limit. |
+| `POST /auth/register` | Create an active user and request verification when email is present. Public. | Body: `username`, optional `email`, `displayName`, `password`, optional `currency`, optional `timezone`. | `201` User with `emailVerified`; `Location: /api/v1/users/me`. | `422` invalid fields/password; `409` username or email conflict. |
+| `POST /auth/login` | Issue a token pair. Public. | Body: `username`, `password`, optional `deviceName`. | `200` token response. | `401` invalid credentials or inactive user; `403 EMAIL_NOT_VERIFIED`; `429` rate limit. |
 | `POST /auth/refresh` | Rotate refresh token and issue a new pair. Public. | Body: `refreshToken`. | `200` token response. | `401` expired, revoked, unknown, or reused token. |
+| `POST /auth/email-verification/request` | Request a new verification link without account enumeration. Public. | Body: `email`. | `204` for known, verified, and unknown addresses. | `422` malformed email; `429` after three email/IP requests per hour. |
+| `POST /auth/email-verification/confirm` | Consume a verification token. Public. | Body: `token`. | `200` verified User; repeated confirmation of the consumed successful token is idempotent. | `422 INVALID_EMAIL_VERIFICATION_TOKEN` or `EMAIL_VERIFICATION_TOKEN_EXPIRED`. |
 | `POST /auth/logout` | Revoke current refresh token. Bearer required. | Body: `refreshToken`. | `204`. | `401` invalid access token; unknown/already revoked refresh token remains idempotent. |
 | `POST /auth/logout-all` | Revoke all user refresh tokens. Bearer required. | No body. | `204`. | `401` invalid access token. |
 | `PUT /auth/password` | Change password and revoke all sessions. Bearer required. | Body: `currentPassword`, `newPassword`. | `204`. | `401` current password wrong; `422` policy failure or same password. |
@@ -190,6 +192,22 @@ Register example:
   "password": "StrongPassword#2026",
   "currency": "VND",
   "timezone": "Asia/Ho_Chi_Minh"
+}
+```
+
+The registration User response contains `emailVerified=false` when an email requires confirmation. The email link opens the configured React Native web client with `verificationToken` in the query string; the client submits it in the request body:
+
+```json
+{
+  "token": "<opaque-single-use-token>"
+}
+```
+
+Resend request:
+
+```json
+{
+  "email": "minh@example.com"
 }
 ```
 

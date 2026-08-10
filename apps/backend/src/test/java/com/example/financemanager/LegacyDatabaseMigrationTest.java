@@ -21,12 +21,12 @@ class LegacyDatabaseMigrationTest {
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
-                    .withDatabaseName("finance_manager_legacy_test")
+                    .withDatabaseName("finance_manager_local")
                     .withUsername("test_user")
                     .withPassword("test_password");
 
     @Test
-    void baselinesDbSqlAtNineAndAppliesReconciliation() throws Exception {
+    void baselinesDbSqlAtNineAndAppliesAllForwardMigrations() throws Exception {
         Path dbSql = Path.of(System.getProperty("user.dir"))
                 .resolve("../..")
                 .resolve("db.sql")
@@ -37,6 +37,14 @@ class LegacyDatabaseMigrationTest {
         try (Connection connection = POSTGRES.createConnection("");
              Statement statement = connection.createStatement()) {
             statement.execute(Files.readString(dbSql));
+            statement.execute("DROP TABLE finance.email_verification_tokens");
+            statement.execute("ALTER TABLE finance.users DROP COLUMN email_verified");
+            statement.execute("""
+                    insert into finance.users
+                        (username, email, password_hash, display_name)
+                    values
+                        ('legacy.user', 'legacy@example.com', 'legacy-hash', 'Legacy User')
+                    """);
         }
 
         Flyway flyway = Flyway.configure()
@@ -64,7 +72,41 @@ class LegacyDatabaseMigrationTest {
                 assertThat(history.getString("type")).isEqualTo("BASELINE");
                 assertThat(history.next()).isTrue();
                 assertThat(history.getString("version")).isEqualTo("10");
+                assertThat(history.next()).isTrue();
+                assertThat(history.getString("version")).isEqualTo("11");
+                assertThat(history.next()).isTrue();
+                assertThat(history.getString("version")).isEqualTo("12");
                 assertThat(history.next()).isFalse();
+            }
+
+            try (ResultSet column = statement.executeQuery(
+                    """
+                    select is_nullable, column_default
+                      from information_schema.columns
+                     where table_schema = 'finance'
+                       and table_name = 'users'
+                       and column_name = 'email_verified'
+                    """)) {
+                assertThat(column.next()).isTrue();
+                assertThat(column.getString("is_nullable")).isEqualTo("NO");
+                assertThat(column.getString("column_default")).contains("false");
+            }
+
+            try (ResultSet tokenTable = statement.executeQuery(
+                    "select to_regclass('finance.email_verification_tokens')")) {
+                assertThat(tokenTable.next()).isTrue();
+                assertThat(tokenTable.getString(1))
+                        .isEqualTo("finance.email_verification_tokens");
+            }
+
+            try (ResultSet legacyUser = statement.executeQuery(
+                    """
+                    select email_verified
+                      from finance.users
+                     where username = 'legacy.user'
+                    """)) {
+                assertThat(legacyUser.next()).isTrue();
+                assertThat(legacyUser.getBoolean("email_verified")).isTrue();
             }
 
             try (ResultSet constraint = statement.executeQuery(

@@ -55,7 +55,7 @@ Infrastructure implements inward-facing interfaces. Domain code does not import 
 
 | Module | Responsibilities | Published Application Interface |
 |---|---|---|
-| `auth` | Registration, authentication, access tokens, refresh rotation, logout, password changes. | Authentication commands and current-principal integration. |
+| `auth` | Registration, email verification, authentication, access tokens, refresh rotation, logout, password changes. | Authentication commands and current-principal integration. |
 | `user` | Profile, status, currency, timezone, ownership identity. | User profile queries and active-user checks. |
 | `account` | Account lifecycle, initial balance, inclusion preferences, balance query. | Account ownership and balance services. |
 | `category` | Default/user categories, type and lifecycle rules. | Applicable-category queries and validation. |
@@ -72,7 +72,7 @@ Modules do not access another module's repositories or JPA entities directly. Th
 ## 5. Request Flow
 
 ```text
-Flutter Mobile Client
+React Native Client (Web / iOS / Android)
         │ HTTPS + JSON + Bearer JWT
         ▼
 Feature API Controller
@@ -105,6 +105,7 @@ Response mapping reverses the flow through application DTO mapping and the API r
 The following operations are atomic:
 
 - registration plus default notification-settings creation;
+- email-verification consumption plus user verification and sibling-token revocation;
 - refresh-token rotation and replacement linkage;
 - password change plus all-token revocation;
 - transaction create/update/delete plus cached-balance maintenance;

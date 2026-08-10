@@ -7,23 +7,23 @@
 | Primary actor | Visitor |
 | Preconditions | No authenticated session is required. |
 | Trigger | Visitor submits the registration form. |
-| Main flow | 1. Client validates required fields. 2. API normalizes username/email. 3. System verifies uniqueness and password policy. 4. Password is BCrypt-hashed. 5. User and notification settings are created atomically. 6. API returns `201` with the user profile. |
-| Alternative flow | Email, currency, or timezone may be omitted; documented defaults are applied. |
-| Error flow | Invalid fields return `422`; existing username/email returns `409`; unexpected persistence failure rolls back both records. |
-| Postconditions | One active `USER` exists; no session exists until login. |
-| Related rules | BR-USER-001–005, BR-USER-008–010, BR-AUTH-001–002, BR-NOTIFICATION-001 |
-| Related API | `POST /api/v1/auth/register` |
+| Main flow | 1. Client validates required fields. 2. API normalizes username/email. 3. System verifies uniqueness and password policy. 4. Password is BCrypt-hashed. 5. User and notification settings are created atomically. 6. When email is present, a hashed 24-hour token is stored and a verification link is sent. 7. User opens the link and the client confirms the token. 8. API marks the email verified and returns the user. |
+| Alternative flow | Email may be omitted and no verification is required; currency/timezone defaults apply; a user may request a replacement link with a uniform `204` response. |
+| Error flow | Invalid fields return `422`; existing username/email returns `409`; invalid/expired verification token returns `422`; resend rate limit returns `429`; mail failure is logged without exposing the token and the user can retry resend. |
+| Postconditions | One active `USER` exists; when email was supplied it is verified before login; no session exists until login. |
+| Related rules | BR-USER-001–005, BR-USER-008–010, BR-AUTH-001–002, BR-AUTH-012–016, BR-NOTIFICATION-001 |
+| Related API | `POST /api/v1/auth/register`, `POST /api/v1/auth/email-verification/request`, `POST /api/v1/auth/email-verification/confirm` |
 
 ## UC-002 Login
 
 | Item | Detail |
 |---|---|
 | Primary actor | Registered user |
-| Preconditions | User exists with status `ACTIVE`. |
+| Preconditions | User exists with status `ACTIVE`; if email is present, it is verified. |
 | Trigger | User submits username and password. |
 | Main flow | 1. API applies rate limiting. 2. User is located by normalized username. 3. Password hash is verified. 4. JWT access token and opaque refresh token are issued. 5. Refresh-token hash and device metadata are persisted. 6. Token pair and user summary are returned. |
 | Alternative flow | Optional device name is retained as sanitized metadata. |
-| Error flow | Invalid credentials or inactive account returns indistinguishable `401`; excessive attempts return `429`. |
+| Error flow | Invalid credentials or inactive account returns indistinguishable `401`; a correct login with unverified email returns `403 EMAIL_NOT_VERIFIED`; excessive attempts return `429`. |
 | Postconditions | Client stores both tokens in secure platform storage; an active refresh-token row exists. |
 | Related rules | BR-USER-005, BR-AUTH-003–006, BR-AUTH-011 |
 | Related API | `POST /api/v1/auth/login` |

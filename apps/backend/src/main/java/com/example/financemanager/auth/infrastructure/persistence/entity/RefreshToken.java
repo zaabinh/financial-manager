@@ -6,6 +6,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -18,6 +20,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "refresh_tokens", schema = "finance")
 @Getter
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class RefreshToken {
 
@@ -59,4 +63,29 @@ public class RefreshToken {
     @JdbcTypeCode(SqlTypes.INET)
     @Column(name = "ip_address", columnDefinition = "inet")
     private InetAddress ipAddress;
+
+    public boolean isExpiredAt(Instant instant) {
+        return !expiresAt.isAfter(instant);
+    }
+
+    public boolean isRevoked() {
+        return revokedAt != null;
+    }
+
+    public boolean wasRotated() {
+        return replacedByTokenId != null;
+    }
+
+    public void revoke(Instant instant, String reason) {
+        if (revokedAt == null) {
+            revokedAt = instant;
+            revokeReason = reason;
+        }
+        lastUsedAt = instant;
+    }
+
+    public void rotateTo(UUID replacementTokenId, Instant instant) {
+        revoke(instant, "ROTATED");
+        replacedByTokenId = replacementTokenId;
+    }
 }

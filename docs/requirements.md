@@ -4,7 +4,7 @@
 
 Personal Finance Manager is a mobile-first application for people who need a simple, private way to record income and expenses, organize money across cash, bank, and savings accounts, control monthly category spending, and understand their financial position.
 
-The MVP consists of a Flutter mobile client and a Java 21/Spring Boot modular monolith backed by PostgreSQL. It is designed for manual personal-finance tracking. It does not move money, connect to financial institutions, or provide regulated financial advice.
+The MVP consists of a React Native client targeting web, iOS, and Android and a Java 21/Spring Boot modular monolith backed by PostgreSQL. It is designed for manual personal-finance tracking. It does not move money, connect to financial institutions, or provide regulated financial advice.
 
 ### 1.1 Product Objectives
 
@@ -55,7 +55,7 @@ The MVP includes:
 - Recurring transactions or automated transaction imports.
 - Credit scoring, lending, or AI financial recommendations.
 - Payment processing or subscription purchasing.
-- Email and push notification delivery.
+- General email and push notification delivery; transactional account-verification email is the only MVP email exception.
 
 The draft schema contains reserved fields for some future capabilities. Their presence does not place those capabilities in MVP scope.
 
@@ -79,19 +79,20 @@ Priority definitions: **P0** is required for MVP release; **P1** is required for
 
 | ID | Title | Description | Priority | Acceptance Criteria |
 |---|---|---|---|---|
-| FR-AUTH-001 | Register | A visitor can create an account with username, password, display name, and optional email. | P0 | Valid data creates one active user and default notification settings; duplicate username or email returns `409`; password is never persisted or logged in plaintext. |
-| FR-AUTH-002 | Login | An active user can authenticate with username and password. | P0 | Valid credentials return an access token, rotated-capable refresh token, expiry metadata, and user summary; invalid credentials return `401` without revealing which field failed. |
+| FR-AUTH-001 | Register | A visitor can create an account with username, password, display name, and optional email. | P0 | Valid data creates one active user and default notification settings; when email is present, a hashed single-use verification token is created and a verification email is requested; duplicate username or email returns `409`; password is never persisted or logged in plaintext. |
+| FR-AUTH-002 | Login | An active user can authenticate with username and password. | P0 | Valid credentials return an access token, rotated-capable refresh token, expiry metadata, and user summary; invalid credentials return `401`; a user with a present but unverified email receives `403 EMAIL_NOT_VERIFIED`. |
 | FR-AUTH-003 | Refresh session | A client can exchange an active refresh token for a new token pair. | P0 | The old token is revoked, a replacement token is issued in the same family, and expired, revoked, or reused tokens return `401`. |
 | FR-AUTH-004 | Logout | A user can end the current device session. | P0 | The submitted refresh token is revoked; repeating logout is safe; the access token naturally expires. |
 | FR-AUTH-005 | Logout all | A user can end all refresh-token sessions. | P1 | Every active refresh token belonging to the user is revoked and can no longer refresh a session. |
 | FR-AUTH-006 | Change password | An authenticated user can change their password after confirming the current password. | P0 | The new password meets policy, differs from the current password, is hashed with BCrypt, and all refresh tokens are revoked. |
+| FR-AUTH-007 | Verify email | A user can confirm an email through a time-limited link and request a replacement link. | P0 | Tokens contain at least 256 bits of entropy, only SHA-256 hashes are stored, links expire after 24 hours, confirmation is idempotent, older links are revoked, resend does not reveal account existence, and resend is rate-limited. |
 
 ### 5.2 Users and Settings
 
 | ID | Title | Description | Priority | Acceptance Criteria |
 |---|---|---|---|---|
 | FR-USER-001 | View profile | An authenticated user can view their own profile and preferences. | P0 | The response contains no password hash, token hash, or internal security metadata. |
-| FR-USER-002 | Update profile | A user can update display name and optional email. | P0 | Blank display names and conflicting emails are rejected; only the authenticated user's profile changes. |
+| FR-USER-002 | Update profile | A user can update display name and optional email. | P0 | Blank display names and conflicting emails are rejected; changing to a new email resets verification, revokes old verification links, and requires confirmation before the next login. |
 | FR-USER-003 | Delete profile | A user can logically delete their profile. | P1 | Status becomes `DELETED`, all refresh tokens are revoked, login is blocked, and financial history is no longer accessible through the API. |
 | FR-SET-001 | Update preferences | A user can update default currency and timezone. | P0 | Currency is a valid uppercase ISO-4217 code; timezone is a valid IANA identifier; changes affect future display and date interpretation but do not convert existing values. |
 | FR-SET-002 | Preserve settings | Profile and application settings persist across sessions and devices. | P1 | A later authenticated request returns the latest saved values. |
@@ -190,5 +191,5 @@ The MVP is releasable when:
 2. P1 items selected for release are either complete or explicitly deferred in release notes.
 3. Security, ownership, migration, backup, and rollback checks pass in staging.
 4. Dashboard, balance, budget, and Monthly Savings calculations reconcile against transaction data.
-5. The Flutter client completes register, login, account, transaction, dashboard, budget, notification, and settings flows.
+5. The React Native client completes register, login, account, transaction, dashboard, budget, notification, and settings flows consistently on web, iOS, and Android.
 6. API, database, security, operations, and user-facing terminology match this documentation set.

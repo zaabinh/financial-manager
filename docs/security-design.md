@@ -11,7 +11,7 @@
 ## 2. Trust Boundaries
 
 ```text
-Flutter App
+React Native App (Web / iOS / Android)
   └─ platform secure storage
         │ HTTPS
         ▼
@@ -37,19 +37,31 @@ The mobile device, network, and all client-supplied identifiers are untrusted. D
 2. Check username/email uniqueness while handling database race conflicts.
 3. Hash password with BCrypt cost 12.
 4. Create active `USER` and notification settings atomically.
-5. Return profile only; the user logs in separately to receive tokens.
+5. When email is present, generate a 256-bit opaque verification token, persist only its SHA-256 hash, and request transactional email delivery.
+6. Return profile only; a user with email verifies it before login.
 
-### 3.2 Login
+### 3.2 Email Verification
+
+1. The React Native client receives the raw token through a link generated from `CLIENT_PUBLIC_URL`.
+2. The client submits the token in the confirmation request body.
+3. The service hashes the token, locks its row, and validates expiry, revocation, use state, active user status, and current-email match.
+4. The token is consumed, the user is marked verified, and other active verification tokens are revoked atomically.
+5. Resend always returns `204`, including for unknown or already verified addresses, and is limited to three normalized-email/IP requests per hour.
+
+Existing users with an email when `V12` is first applied are grandfathered as verified to prevent rollout lockout.
+
+### 3.3 Login
 
 1. Apply IP-and-username rate limiting.
 2. Resolve normalized username and verify active status.
 3. Verify BCrypt password using constant-time library behavior.
-4. Issue 15-minute JWT access token.
-5. Generate a cryptographically random opaque refresh token.
-6. Persist only its SHA-256 hash with seven-day expiration and device metadata.
-7. Return the raw token pair once over HTTPS.
+4. Reject a present but unverified email with `403 EMAIL_NOT_VERIFIED`.
+5. Issue 15-minute JWT access token.
+6. Generate a cryptographically random opaque refresh token.
+7. Persist only its SHA-256 hash with seven-day expiration and device metadata.
+8. Return the raw token pair once over HTTPS.
 
-### 3.3 Refresh
+### 3.4 Refresh
 
 1. Hash the presented opaque token.
 2. Find the stored record and validate user, expiry, revocation, and family state.
@@ -60,7 +72,7 @@ The mobile device, network, and all client-supplied identifiers are untrusted. D
 
 Rotation occurs atomically under row-level concurrency control so two simultaneous refreshes cannot both succeed.
 
-### 3.4 Refresh-Token Reuse
+### 3.5 Refresh-Token Reuse
 
 If a revoked token with a replacement is presented:
 
@@ -70,13 +82,13 @@ If a revoked token with a replacement is presented:
 4. return `401 TOKEN_REUSE_DETECTED`;
 5. require login again on affected devices.
 
-### 3.5 Logout and Logout All
+### 3.6 Logout and Logout All
 
 - Logout revokes the submitted current-device refresh token and is idempotent.
 - Logout-all revokes every active refresh token for the authenticated user.
 - Access tokens are not stored; they remain valid only until their short expiration.
 
-### 3.6 Password Change
+### 3.7 Password Change
 
 The current password is verified, the new password is hashed, and every refresh token is revoked in one transaction. The client clears local tokens and requires a new login.
 
@@ -130,6 +142,14 @@ Expired and revoked token records are periodically purged after the security aud
 - Authentication responses never reveal whether the username or password was wrong.
 - A future password-reset flow requires a separate time-limited single-use design and is not in MVP scope.
 
+### 6.1 Email Verification Tokens
+
+- Tokens use 32 cryptographically random bytes encoded as URL-safe Base64 without padding.
+- Only fixed-length SHA-256 hashes are stored; raw values appear only in the one-time client link.
+- Tokens expire after 24 hours, are single-use, and older active tokens are revoked on resend.
+- Confirmation validates the token's email snapshot against the current user email.
+- Raw tokens, verification URLs, and full email addresses are excluded from logs and analytics.
+
 ## 7. Authorization
 
 ### 7.1 Roles
@@ -160,9 +180,9 @@ An absent and an unowned resource both return `404`. Controllers never accept a 
 
 Status is checked during login/refresh and, for sensitive operations, against current database state rather than relying only on JWT claims.
 
-## 8. Mobile Token Storage
+## 8. Client Token Storage
 
-- Flutter stores both tokens in iOS Keychain or Android Keystore through a secure-storage library.
+- React Native stores both tokens with Expo SecureStore, backed by iOS Keychain or Android Keystore. The web adapter uses browser storage only as an explicit compatibility tradeoff and therefore requires strict CSP, dependency hygiene, and XSS prevention.
 - Tokens are never placed in shared preferences, SQLite, analytics events, URLs, crash breadcrumbs, or clipboard.
 - The access token is attached only to trusted API origins.
 - On refresh failure or reuse detection, both local tokens are erased.
@@ -176,6 +196,7 @@ Status is checked during login/refresh and, for sensitive operations, against cu
 | Broken object-level authorization | Scoped repository queries, service ownership checks, cross-user integration tests, `404` response policy. |
 | Brute-force login | Initial limit: 5 failed login attempts per username/IP per 15 minutes; progressive temporary blocking and security metrics. |
 | Refresh abuse | Initial limit: 20 refresh attempts per IP per minute; rotation and family reuse detection. |
+| Verification abuse/enumeration | Uniform resend response, three requests per normalized email/IP per hour, hashed token storage, 24-hour expiry, single use. |
 | Token theft | HTTPS, short access lifetime, secure mobile storage, refresh hashing, rotation, revocation. |
 | JWT forgery | HMAC-SHA-256, 256-bit secret, algorithm allow-list, issuer/audience validation, no `none` algorithm. |
 | Sensitive logging | Structured allow-list fields, redaction filters, no request-body logging on auth or finance writes. |
@@ -214,6 +235,8 @@ Canonical environment variables:
 | `JWT_ACCESS_EXPIRATION` | Access-token lifetime; 15 minutes | No |
 | `JWT_REFRESH_EXPIRATION` | Refresh-token lifetime; seven days | No |
 | `ALLOWED_ORIGINS` | CORS allow-list | No |
+| `CLIENT_PUBLIC_URL` | Approved React Native web origin used in verification links | No |
+| `EMAIL_VERIFICATION_EXPIRATION` | Verification-token lifetime; 24 hours | No |
 
 Production values come from platform secret storage, never committed `.env` files or image layers. Secrets are rotated through an operational procedure that supports a short JWT key-overlap window if required.
 

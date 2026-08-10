@@ -12,7 +12,7 @@ Testing protects financial correctness, ownership isolation, authentication safe
 | Slice | Repository mappings/queries and controller HTTP behavior. | `@DataJpaTest`, MockMvc, Spring Security Test, Testcontainers |
 | Integration | Complete use cases through real Spring configuration and PostgreSQL. | `@SpringBootTest`, MockMvc, Testcontainers |
 | Contract | OpenAPI and response-schema compatibility. | OpenAPI validation/diff tooling |
-| Mobile | Flutter units, widgets, navigation, API adapters. | Flutter test, Mockito/mocktail |
+| Client | React Native units, components, navigation, API adapters, and platform behavior. | Jest, React Native Testing Library, MSW, Maestro/Detox |
 | System | Deployed API, database migration, and mobile smoke paths. | CI scripts and staging smoke suite |
 
 ## 3. Unit Tests
@@ -75,7 +75,7 @@ Run the real Spring context with PostgreSQL Testcontainers, Flyway, security fil
 
 Required flows:
 
-1. Register, verify defaults, login, access protected profile.
+1. Register, verify defaults, confirm email through a hashed single-use token, login, access protected profile.
 2. Refresh token, verify rotation, reject reused predecessor.
 3. Logout current token and logout all devices.
 4. Change password and verify prior password/tokens fail.
@@ -101,6 +101,7 @@ Required flows:
 - Self-registration cannot assign `ADMIN`.
 - Mass-assignment attempts cannot set owner IDs, source, balance, audit fields, or token state.
 - Rate-limit behavior for login and refresh.
+- Verification resend enumeration resistance/rate limits and invalid, expired, revoked, reused, or email-mismatched tokens.
 - CORS allow-list and preflight behavior.
 - Logs and error responses do not contain raw credentials or internal SQL details.
 
@@ -127,13 +128,14 @@ Destructive changes require backup/restore rehearsal and a roll-forward repair m
 - Contract diff fails CI on unapproved breaking changes.
 - JSON examples are validated against generated schemas where tooling permits.
 
-## 10. Flutter Tests
+## 10. React Native Tests
 
-- Unit-test DTO parsing, decimal handling, token refresh coordination, and repository adapters.
-- Widget-test forms, validation, loading, empty, error, and success states.
-- Navigation tests cover auth guards and logout.
-- Secure-storage adapter tests ensure tokens never use ordinary preferences.
-- Integration tests exercise login, transaction entry, dashboard, budget, and settings against staging or a controlled local backend.
+- Unit-test DTO parsing, decimal handling, token refresh coordination, formatters, and API adapters with Jest.
+- Component-test forms, validation, loading, empty, error, and success states with React Native Testing Library.
+- Navigation tests cover authentication guards, responsive navigation, and logout on web, iOS, and Android targets.
+- Secure-storage adapter tests verify native tokens use Expo SecureStore and browser storage is isolated behind the web adapter.
+- Mock Service Worker or equivalent request mocks cover response envelopes, token refresh, validation errors, and unavailable APIs.
+- Maestro or Detox integration tests exercise login, transaction entry, dashboard, budget, and settings against staging or a controlled local backend.
 
 ## 11. Test Naming and Structure
 

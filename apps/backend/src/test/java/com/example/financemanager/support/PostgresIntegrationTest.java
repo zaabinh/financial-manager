@@ -9,7 +9,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(properties = "debug=false")
+@SpringBootTest(properties = {
+        "debug=false",
+        "spring.mail.host=localhost",
+        "app.mail.from-address=test@example.com",
+        "app.mail.from-name=Test",
+        "management.health.mail.enabled=false"
+})
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 public abstract class PostgresIntegrationTest {
@@ -18,7 +24,7 @@ public abstract class PostgresIntegrationTest {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:16-alpine")
-                    .withDatabaseName("finance_manager_test")
+                    .withDatabaseName("finance_manager_local")
                     .withUsername("test_user")
                     .withPassword("test_password");
 }

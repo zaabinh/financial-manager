@@ -34,6 +34,11 @@ This document defines domain rules for the Personal Finance Manager MVP. Rules a
 | BR-AUTH-009 | Logout revokes the current refresh token. Logout-all and password changes revoke all active refresh tokens for the user. |
 | BR-AUTH-010 | Expired, revoked, unknown, reused, or deleted-user refresh tokens cannot issue access tokens. |
 | BR-AUTH-011 | Raw refresh tokens are returned only at issuance and are never written to application logs. |
+| BR-AUTH-012 | An account with a nonnull email must verify that email before login; accounts without email may authenticate normally. |
+| BR-AUTH-013 | Email verification tokens are opaque URL-safe values with at least 256 bits of entropy, a 24-hour lifetime, and SHA-256-only database storage. |
+| BR-AUTH-014 | Issuing a new verification token revokes all earlier unused tokens for that user; confirmation requires the token email to match the user's current email. |
+| BR-AUTH-015 | Verification confirmation is idempotent for an already-consumed token whose user remains verified; invalid, revoked, mismatched, or expired tokens return `422` without exposing token state internally. |
+| BR-AUTH-016 | Verification resend returns the same `204` for known and unknown emails and allows at most three requests per normalized email and IP per hour. |
 
 ## 4. Accounts
 
@@ -127,7 +132,7 @@ This document defines domain rules for the Personal Finance Manager MVP. Rules a
 | BR-NOTIFICATION-002 | Daily reminders use the user's IANA timezone and configured local reminder time. |
 | BR-NOTIFICATION-003 | An enabled daily reminder generates at most one in-app notification per user/local calendar date. |
 | BR-NOTIFICATION-004 | Disabled notification types do not generate user alerts. |
-| BR-NOTIFICATION-005 | MVP delivery is in-app only; email, push, and quiet-hours fields are reserved and inactive. |
+| BR-NOTIFICATION-005 | MVP finance-notification delivery is in-app only; transactional email verification is a security exception, while finance email, push, and quiet-hours fields remain reserved and inactive. |
 | BR-NOTIFICATION-006 | Notification type is `DAILY_REMINDER`, `BUDGET_WARNING`, `BUDGET_EXCEEDED`, or `SYSTEM`. |
 | BR-NOTIFICATION-007 | An unread notification has `isRead=false` and `readAt=null`. |
 | BR-NOTIFICATION-008 | A read notification has `isRead=true` and a nonnull UTC `readAt`. |

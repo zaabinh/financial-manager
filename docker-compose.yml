@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${DATABASE_NAME:-finance_manager}
+      POSTGRES_DB: ${DATABASE_NAME:-finance_manager_local}
       POSTGRES_USER: ${DATABASE_USERNAME:?Set DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD}
     ports:
-      - "5432:5432"
+      - "${DATABASE_HOST_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME:-finance_manager}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME} -d ${DATABASE_NAME:-finance_manager_local}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      DATABASE_URL: jdbc:postgresql://postgres:5432/${DATABASE_NAME:-finance_manager}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${DATABASE_NAME:-finance_manager_local}
       DATABASE_USERNAME: ${DATABASE_USERNAME:?Set DATABASE_USERNAME}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:?Set DATABASE_PASSWORD}
       FLYWAY_BASELINE_DESCRIPTION: ${FLYWAY_BASELINE_DESCRIPTION:-Existing db.sql schema}
@@ -32,7 +32,18 @@ services:
       JWT_AUDIENCE: ${JWT_AUDIENCE:-finance-manager-client}
       JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-PT15M}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-P7D}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:19006}
+      CLIENT_PUBLIC_URL: ${CLIENT_PUBLIC_URL:-http://localhost:8081}
+      EMAIL_VERIFICATION_EXPIRATION: ${EMAIL_VERIFICATION_EXPIRATION:-PT24H}
+      MAIL_HOST: ${MAIL_HOST:?Set MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@finance-manager.local}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Personal Finance Manager}
+      MAIL_HEALTH_ENABLED: ${MAIL_HEALTH_ENABLED:-false}
     ports:
       - "8080:8080"
     depends_on:

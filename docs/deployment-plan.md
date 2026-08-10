@@ -75,9 +75,12 @@ Canonical runtime variables:
 | `JWT_ACCESS_EXPIRATION` | Yes | `PT15M` or equivalent typed duration |
 | `JWT_REFRESH_EXPIRATION` | Yes | `P7D` or equivalent typed duration |
 | `ALLOWED_ORIGINS` | Yes where web access exists | Comma-separated allow-list |
+| `CLIENT_PUBLIC_URL` | Yes | HTTPS React Native web origin used in verification links |
+| `EMAIL_VERIFICATION_EXPIRATION` | No | Defaults to `PT24H` |
+| `MAIL_HOST` / `MAIL_PORT` | Yes for verification | Transactional SMTP endpoint |
 | `LOG_LEVEL_ROOT` | No | Defaults to `INFO` |
 
-Spring configuration, Compose, and `.env.example` use these canonical names. Datasource credentials and JWT secrets are required environment values with no application defaults.
+Spring configuration, Compose, and `.env.example` use these canonical names. Datasource credentials and JWT secrets are required environment values with no application defaults. Production email verification requires an authenticated SMTP provider and a public HTTPS `CLIENT_PUBLIC_URL`.
 
 Secrets are supplied by the hosting platform's secret manager. They are not committed, printed by CI, passed as Docker build arguments, or stored in image labels.
 
@@ -107,7 +110,7 @@ CI uses short-lived cloud credentials through workload identity where supported.
 - Flyway migrations are versioned and reviewed with application changes.
 - Applied migrations are never edited.
 - A deployment runs migrations before new instances receive traffic.
-- A legacy database created manually from `db.sql` is baselined once at version 9 and reconciled by `V10`; baseline-on-migrate is disabled immediately afterward.
+- A legacy database created manually from `db.sql` is baselined once at version 9, reconciled by `V10`, aligned with the current user schema by `V11`, and upgraded with verification tokens by `V12`; baseline-on-migrate is disabled immediately afterward.
 - Only one migration process runs at a time through Flyway locking/platform job control.
 - Destructive changes require a verified backup and expand-and-contract rollout.
 - Rollback uses a previous application image only when schema remains backward-compatible.

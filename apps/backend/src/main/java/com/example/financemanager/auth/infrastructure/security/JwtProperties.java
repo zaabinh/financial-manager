@@ -5,11 +5,15 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-import java.time.Duration;
-import java.util.Base64;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 
-@Validated
+import java.time.Duration;
+
+import javax.crypto.SecretKey;
+
 @ConfigurationProperties(prefix = "app.jwt")
+@Validated
 public record JwtProperties(
         @NotBlank String issuer,
         @NotBlank String audience,
@@ -17,34 +21,36 @@ public record JwtProperties(
         @NotNull Duration accessTokenExpiration,
         @NotNull Duration refreshTokenExpiration
 ) {
+
     public JwtProperties {
-        if (accessTokenExpiration != null &&
-                (accessTokenExpiration.isZero() || accessTokenExpiration.isNegative())) {
+        validateSecret(secret);
+
+        if (accessTokenExpiration.isZero() || accessTokenExpiration.isNegative()) {
             throw new IllegalArgumentException("Access-token expiration must be positive");
         }
 
-        if (refreshTokenExpiration != null &&
-                (refreshTokenExpiration.isZero() || refreshTokenExpiration.isNegative())) {
+        if (refreshTokenExpiration.isZero() || refreshTokenExpiration.isNegative()) {
             throw new IllegalArgumentException("Refresh-token expiration must be positive");
         }
+    }
 
+    private static void validateSecret(String secret) {
         byte[] key;
+
         try {
-            key = Base64.getDecoder().decode(secret);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException(
-                "JWT signing secret must be valid Base64", ex
-            );
+            key = Decoders.BASE64.decode(secret);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("JWT signing secret must be valid Base64", ex);
         }
 
         if (key.length < 32) {
             throw new IllegalArgumentException(
-                "JWT signing key must contain at least 32 bytes,"
+                    "JWT signing key must contain at least 32 bytes"
             );
         }
     }
 
-    public byte[] signingKey() {
-        return Base64.getDecoder().decode(secret);
+    public SecretKey signingKey() {
+        return Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
     }
 }

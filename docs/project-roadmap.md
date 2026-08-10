@@ -6,7 +6,7 @@
 - Keep the backend a modular monolith throughout the MVP.
 - Treat the REST contract, Flyway migrations, and business rules as reviewed interfaces.
 - Deliver thin vertical slices after foundation work rather than building every persistence layer first.
-- Keep subscriptions, payments, recurring transactions, imports, email, and push outside the MVP.
+- Keep subscriptions, payments, recurring transactions, imports, finance-notification email, and push outside the MVP; transactional email verification is the only email exception.
 
 ## Phase 1: Planning
 
@@ -19,7 +19,7 @@
 
 - Complete requirements, business rules, use cases, API, security, architecture, testing, deployment, and roadmap documents.
 - Review the draft SQL against the documented MVP.
-- Produce ERD and Flutter wireframes for auth, home, accounts, transactions, budgets, analytics, notifications, and settings.
+- Produce ERD and React Native wireframes for web, iOS, and Android auth, home, accounts, transactions, budgets, analytics, notifications, and settings.
 - Resolve terminology: Account, Total Balance, Monthly Savings, Remaining Budget, and `SAVINGS`.
 
 **Deliverables**
@@ -91,11 +91,12 @@
 - Implement login and 15-minute HMAC-SHA-256 JWT access tokens.
 - Implement opaque seven-day refresh tokens, SHA-256 hashes, rotation, family reuse detection, logout, and logout-all.
 - Implement password change and all-session revocation.
+- Implement hashed, single-use email verification tokens, verification mail, confirmation, and enumeration-safe resend.
 - Add rate limiting, sanitized audit events, security filters, and tests.
 
 **Deliverables**
 
-- Authentication APIs, security configuration, token persistence, and complete auth test suite.
+- Authentication APIs, security configuration, refresh/email-verification token persistence, verification client flow, and complete auth test suite.
 
 **Learning outcomes**
 
@@ -107,7 +108,7 @@
 
 **Dependencies**
 
-- Users and refresh-token migrations, global error contract.
+- Users, refresh-token, and email-verification-token migrations; reusable mail service; global error contract.
 
 **Risks**
 
@@ -125,7 +126,7 @@
 - Implement account CRUD, activation, initial-balance handling, and inclusion preference.
 - Implement default category seed data and user category lifecycle.
 - Implement scoped repository queries and cross-user authorization tests.
-- Expose OpenAPI-documented endpoints and Flutter data adapters.
+- Expose OpenAPI-documented endpoints and React Native data adapters.
 
 **Deliverables**
 
@@ -159,7 +160,7 @@
 - Enforce account/category ownership, active state, and type compatibility.
 - Implement atomic old/new contribution reconciliation.
 - Implement derived balance query and monitored cache maintenance/reconciliation.
-- Add Flutter transaction entry/history flows.
+- Add React Native transaction entry/history flows across web, iOS, and Android.
 
 **Deliverables**
 
@@ -193,7 +194,7 @@
 - Implement selected-month summary.
 - Implement category expense, income-versus-expense, and Monthly Savings series.
 - Enforce bounded ranges and currency-safe aggregation.
-- Add Flutter dashboard cards and charts.
+- Add React Native dashboard cards and charts.
 
 **Deliverables**
 
@@ -226,8 +227,8 @@
 - Implement monthly budget CRUD, uniqueness, usage, remaining amount, and status.
 - Implement warning/exceeded transition detection and idempotency.
 - Implement notification settings, daily reminder scheduler, list/count/read/read-all/delete.
-- Keep nonmonthly periods, rollover, email, push, and quiet hours disabled.
-- Add Flutter budget and notification screens.
+- Keep nonmonthly periods, rollover, finance-notification email, push, and quiet hours disabled.
+- Add React Native budget and notification screens.
 
 **Deliverables**
 
@@ -249,7 +250,7 @@
 
 - Duplicate alerts, missed timezone jobs, transaction edits changing thresholds. Mitigation: idempotency keys/state tests and recalculation policy.
 
-## Phase 8: Flutter Mobile Application
+## Phase 8: React Native Mobile Application
 
 **Objectives**
 
@@ -269,7 +270,7 @@
 
 **Learning outcomes**
 
-- Flutter state management, secure storage, navigation, API integration, responsive UI, and charting.
+- React Native state management, Expo SecureStore, navigation, API integration, responsive UI, and charting.
 
 **Definition of done**
 
@@ -291,7 +292,7 @@
 
 **Tasks**
 
-- Complete unit, slice, repository, integration, security, architecture, contract, Flutter, and system tests.
+- Complete unit, slice, repository, integration, security, architecture, contract, React Native, and system tests.
 - Reach practical coverage goals for critical logic.
 - Run static analysis, dependency/secret/container scans.
 - Load-test CRUD, dashboard, analytics, and login/refresh limits.
@@ -311,7 +312,7 @@
 
 **Dependencies**
 
-- Feature-complete backend and Flutter app.
+- Feature-complete backend and React Native app for web, iOS, and Android.
 
 **Risks**
 
